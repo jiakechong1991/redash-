@@ -153,13 +153,14 @@ def login(org_slug=None):
 @routes.route(org_scoped_rule('/oauth/xtx'), methods=['GET'])
 @limiter.limit(settings.THROTTLE_LOGIN_PATTERN)
 def login2():
+    # 这是定制的一个登录函数，用于从第三方通过点击登录
     login2_url = "http://sso.xuetangx.com:8888"
-    access_token = "e30d2d0c3479577669cc1f32cd75c1f0"
-    access_token = request.args.get('sso_session_id', None)
+    access_token = request.args.get('sso_session_id', None)   # 从输入参数中获取访问表示ID
 
     def get_user(access_token):
+        # 获取这个tokenID在第三方对应username
         if access_token == None:
-            return u"访客"
+            return u"访客"  # 这个3th网站解释： 如果这个用户登录了，就是用户名，否则就是这个"访客"字符串
         xtx_sso_server = "http://sso.xuetangx.com:8888/"
         xtx_sso_menu_api = urljoin(xtx_sso_server, '/api/get_all_menu')
         response = requests.get(xtx_sso_menu_api, cookies={'session_id': access_token}, params={'skey': 'opdata'})
@@ -167,10 +168,10 @@ def login2():
         return info['nickname']
     name = get_user(access_token)
     logger.debug("name:{n}".format(n=name))
-    # 使用这个name,看能否在redash数据库中找到这个名字
+
     try:
+        # 使用这个name,看能否在redash数据库中找到这个名字
         user = models.User.find_by_name(name=name).one()
-        logger.debug("------")
         logger.debug(user)
         logger.debug("-----")
         # next_path = request.args.get('next', index_url)
@@ -182,12 +183,13 @@ def login2():
         logger.debug("{n} login fail by th3".format(n=name))
 
 
-
+# 这是定制的退出函数，其实就是把结果URL重定向到了指定的一个网站上
 @routes.route(org_scoped_rule('/logout'))
 def logout(org_slug=None):
-    logout_user()
+    logout_user()  # 在flask_login会话中注销这个用户的登录状态
     login2_url = "http://sso.xuetangx.com:8888"
-    return redirect(login2_url)
+    return redirect(login2_url)  # 然后你可以随意决定把退出后的URL重定向到哪里
+    # 一般我们还会重定向到登录页
 
 
 def base_href():
